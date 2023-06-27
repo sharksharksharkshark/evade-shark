@@ -1,0 +1,274 @@
+-- [[ HamstaGang on V3RM | Last updated 08/29/2022 ]] --
+
+-- Wait for game to load
+repeat task.wait() until game:IsLoaded();
+
+-- Temp fix for ROBLOX turning off highlights
+if setfflag then setfflag("OutlineSelection", "true") end
+
+-- Services
+local ReplicatedStorage = game:GetService("ReplicatedStorage");
+local CoreGui = game:GetService("CoreGui");
+local Players = game:GetService("Players");
+local Workspace = game:GetService("Workspace");
+local Lighting = game:GetService("Lighting");
+local VirtualInputManager = game:GetService("VirtualInputManager");
+
+-- Remote Stuff
+local Events = ReplicatedStorage:WaitForChild("Events", 1337)
+
+-- Local Player
+local Player = Players.LocalPlayer;
+
+-- UI Lib (Fluxus Lib because I like to shuffle them and they support WEAO <3)
+local lib = loadstring(game:HttpGet("https://raw.githubusercontent.com/Babyhamsta/RBLX_Scripts/main/UILibs/FluxusUI.lua"))()
+
+-- ESP support
+local ESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/Babyhamsta/RBLX_Scripts/main/Universal/SimpleHighlightESP.lua"))()
+
+-- Main Window
+local Window = lib:CreateWindow("Shark Evade （hacker）")
+
+-- Create Pages
+local CharPage = Window:NewTab("人物")
+local InvePage = Window:NewTab("库存")
+local ServerPage = Window:NewTab("服务器")
+local ESPPage = Window:NewTab("ESP/摄像头")
+
+-- Create Sections
+local MainSection = CharPage:AddSection("人物")
+local InventorySection = InvePage:AddSection("库存")
+local ServerSection = ServerPage:AddSection("服务器")
+local ESPSection = ESPPage:AddSection("ESP")
+local CamSection = ESPPage:AddSection("摄像头")
+
+-- GUI Toggles / Settings
+local Highlights_Active = false;
+local AI_ESP = false;
+local GodMode_Enabled = false;
+local No_CamShake = false;
+
+-- Anti AFK
+for i,v in pairs(getconnections(game:GetService("Players").LocalPlayer.Idled)) do v:Disable() end
+
+-- Simple Text ESP
+function Simple_Create(base, name, trackername, studs)
+    local bb = Instance.new('BillboardGui', game.CoreGui)
+    bb.Adornee = base
+    bb.ExtentsOffset = Vector3.new(0,1,0)
+    bb.AlwaysOnTop = true
+    bb.Size = UDim2.new(0,6,0,6)
+    bb.StudsOffset = Vector3.new(0,1,0)
+    bb.Name = trackername
+
+    local frame = Instance.new('Frame', bb)
+    frame.ZIndex = 10
+    frame.BackgroundTransparency = 0.3
+    frame.Size = UDim2.new(1,0,1,0)
+    frame.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+
+    local txtlbl = Instance.new('TextLabel', bb)
+    txtlbl.ZIndex = 10
+    txtlbl.BackgroundTransparency = 1
+    txtlbl.Position = UDim2.new(0,0,0,-48)
+    txtlbl.Size = UDim2.new(1,0,10,0)
+    txtlbl.Font = 'ArialBold'
+    txtlbl.FontSize = 'Size12'
+    txtlbl.Text = name
+    txtlbl.TextStrokeTransparency = 0.5
+    txtlbl.TextColor3 = Color3.fromRGB(255, 0, 0)
+
+    local txtlblstud = Instance.new('TextLabel', bb)
+    txtlblstud.ZIndex = 10
+    txtlblstud.BackgroundTransparency = 1
+    txtlblstud.Position = UDim2.new(0,0,0,-35)
+    txtlblstud.Size = UDim2.new(1,0,10,0)
+    txtlblstud.Font = 'ArialBold'
+    txtlblstud.FontSize = 'Size12'
+    txtlblstud.Text = tostring(studs) .. " 距离"
+    txtlblstud.TextStrokeTransparency = 0.5
+    txtlblstud.TextColor3 = Color3.new(255,255,255)
+end
+
+-- Clear ESP
+function ClearESP(espname)
+    for _,v in pairs(game.CoreGui:GetChildren()) do
+        if v.Name == espname and v:isA('BillboardGui') then
+            v:Destroy()
+        end
+    end
+end
+
+-- God Mode (Credits to Egg Salad)
+MainSection:AddButton("上帝模式", "给你上帝模式", function()
+    local Character = Player.Character or Player.CharacterAdded:Wait()
+    local Hum = Character:WaitForChild("Humanoid")
+    Hum.Parent = nil;
+    Hum.Parent = Character;
+end)
+
+MainSection:AddToggle("循环上帝模式", "保持上帝的模式", false, function(bool)
+    GodMode_Enabled = bool;
+
+    if bool then -- just incase they only enable the toggle..
+        local Character = Player.Character or Player.CharacterAdded:Wait()
+        local Hum = Character:WaitForChild("Humanoid")
+        Hum.Parent = nil;
+        Hum.Parent = Char;
+    end
+end)
+
+-- Respawn/Reset
+MainSection:AddButton("重生", "免费重新评估，不需要支付15 Robux！", function()
+    local Reset = Events:FindFirstChild("Reset")
+    local Respawn = Events:FindFirstChild("Respawn")
+
+    if Reset and Respawn then
+        Reset:FireServer();
+        task.wait(2)
+        Respawn:FireServer();
+    end
+end)
+
+-- Make server all bright so your eye balls can see
+MainSection:AddButton("全图明亮", "对于害怕黑暗的hacker:(", function()
+    local light = Instance.new("PointLight", Character.HumanoidRootPart)
+    light.Brightness = .3
+    light.Range = 10000
+
+    Lighting.TimeOfDay = "14:00:00"
+    Lighting.FogEnd = 10000;
+    Lighting.Brightness = 2;
+    Lighting.Ambient = Color3.fromRGB(255,255,255)
+    Lighting.FogColor = Color3.fromRGB(255,255,255)
+end)
+
+MainSection:AddSlider("速度", "Adjust WalkSpeed to be speed", 1450, 10000, 1450, true, function(val)
+    pcall(function()
+        local Character = Player.Character;
+        Character.Humanoid:SetAttribute("RealSpeed", tonumber(val));
+    end)
+end)
+
+MainSection:AddSlider("跳跃", "Adjust JumpPower and dunk", 3, 15, 3, true, function(val)
+    pcall(function()
+        local Character = Player.Character;
+        Character.Humanoid:SetAttribute("RealJumpHeight", tonumber(val));
+    end)
+end)
+
+-- Alpha Skin Giver
+InventorySection:AddButton("alpha皮肤", "给你私人Alpha皮肤", function()
+    Events.UI.Purchase:InvokeServer("Skins", "AlphaTester")
+end)
+
+-- Boombox Giver (Frog#5989)
+InventorySection:AddButton("吊皮皮肤？", "为您提供Boombox皮肤免费！", function()
+    Events.UI.Purchase:InvokeServer("Skins", "Boombox")
+end)
+
+-- Emote Giver (Frog#5989)
+InventorySection:AddButton("开发测试", "给你私人测试", function()
+    Events.UI.Purchase:InvokeServer("Emotes", "Test")
+end)
+
+InventorySection:AddButton("新的菜单", "这是一个新的功能都能用", function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/GamingScripter/Darkrai-X/main/Games/Evade"))()
+end)
+
+-- Crash Server (Credits to FeIix (V3RM) <3)
+ServerSection:AddButton("崩溃服务器（Emm", "崩溃服务器", function()
+    local Reset = Events:FindFirstChild("Reset")
+    local Respawn = Events:FindFirstChild("Respawn")
+    while task.wait() do
+        if Reset and Respawn then
+            Reset:FireServer()
+            Respawn:FireServer()
+        end
+    end
+end)
+
+
+-- Character Highlights
+ESPSection:AddButton("人物明亮", "突出显示所有，使其更容易看到", function()
+    ESP:ClearESP();
+    Highlights_Active = true;
+
+    for i, v in ipairs(Players:GetPlayers()) do
+        if v ~= Player then
+            v.CharacterAdded:Connect(function(Char)
+                ESP:AddOutline(Char)
+                ESP:AddNameTag(Char)
+            end)
+
+            if v.Character then
+                ESP:AddOutline(v.Character)
+                ESP:AddNameTag(v.Character)
+            end
+        end
+    end
+end)
+
+-- AI Text ESP
+ESPSection:AddToggle("AI ESP", "将文本ESP添加到AI，使其更容易看到", false, function(bool)
+    AI_ESP = bool;
+end)
+
+-- No Camera Shake
+CamSection:AddToggle("没有相机摇动", "删除由于AI造成的相机摇动", false, function(bool)
+    No_CamShake = bool;
+end)
+
+
+-- [[ Helpers / Loop Funcs ]] --
+
+-- Highlight helper
+game:GetService("Players").PlayerAdded:Connect(function(Player)
+    Player.CharacterAdded:Connect(function(Char)
+        if Highlights_Active then
+            ESP:AddOutline(Char)
+            ESP:AddNameTag(Char)
+        end
+    end)
+end)
+
+-- Target only Local Player
+Player.CharacterAdded:Connect(function(Char)
+    local Hum = Char:WaitForChild("Humanoid", 1337);
+
+    -- Godmode helper (Credits to Egg Salad)
+    if GodMode_Enabled then
+        Hum.Parent = nil;
+        Hum.Parent = Char;
+    end
+end)
+
+
+-- ESP AI
+task.spawn(function()
+    while task.wait(0.05) do
+        if AI_ESP then
+            pcall(function()
+                ClearESP("AI_Tracker")
+                local GamePlayers = Workspace:WaitForChild("Game", 1337).Players;
+                for i,v in pairs(GamePlayers:GetChildren()) do
+                    if not game.Players:FindFirstChild(v.Name) then -- Is AI
+                        local studs = Player:DistanceFromCharacter(v.PrimaryPart.Position)
+                        Simple_Create(v.HumanoidRootPart, v.Name, "AI_Tracker", math.floor(studs + 0.5))
+                    end
+                end
+            end)
+        else
+            ClearESP("AI_Tracker");
+        end
+    end
+end)
+
+-- Camera Shake
+task.spawn(function()
+    while task.wait() do
+        if No_CamShake then
+            Player.PlayerScripts:WaitForChild("CameraShake", 1234).Value = CFrame.new(0,0,0) * CFrame.Angles(0,0,0);
+        end
+    end
+end)
